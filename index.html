@@ -27,7 +27,8 @@
       }
 
       .setpoint {
-        fill: #4f4;
+        stroke: #4f4;
+        fill: rgba( 128, 256, 128, 0.2 );
       }
     </style>
   </head>
@@ -37,6 +38,9 @@
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script>
       var padding = 10; // percentage of height not to draw into, at top and bottom
+      var setpointHeight = 100; // px
+      var numPoints = 1000;
+      var pointsPerSecond = 100;
 
       var processVar = 0;
       var controlVar = 0;
@@ -76,8 +80,6 @@
       };
 
       var data = [];
-      var numPoints = 1000;
-      var pointsPerSecond = 100;
       for( var i = 0; i < numPoints; i++ ) {
         data.push(0);
       }
@@ -109,17 +111,17 @@
           var value = yScale.invert( d3.event.y );
           setpoint = Math.min( 1, Math.max( -1, value ) );
           d3.select( '.setpoint' )
-            .attr( 'y', yScale( setpoint ) - 5 );
+            .attr( 'y', yScale( setpoint ) - setpointHeight/2 );
         } );
 
       d3.select( 'svg' )
         .append( 'rect' )
           .classed( 'setpoint', true )
-          .attr( 'stroke', 'none' )
+          .attr( 'strokeWidth', 2 )
           .attr( 'x', width - 100 )
-          .attr( 'y', yScale( 0 ) - 5 )
+          .attr( 'y', yScale( 0 ) - setpointHeight/2 )
           .attr( 'width', 100 )
-          .attr( 'height', 10 )
+          .attr( 'height', setpointHeight )
           .call( setpointSliderDrag );
 
       var frequency = 0.5; // Hz
