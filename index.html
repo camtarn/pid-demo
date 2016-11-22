@@ -1,0 +1,48 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title>
+    PID controller tuning graphical demo
+    </title>
+    <style>
+      html {
+        height: 90%;
+      }
+
+      body {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="100%" height="100%">
+    </svg>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script>
+      var data = [];
+      var numPoints = 100;
+      var tIncrement = 1 / 20;
+      for( var i = 0; i < numPoints; i++ ) {
+        var t = i * Math.PI * tIncrement;
+        data.push( Math.sin(t) );
+      }
+
+      var width = d3.select('svg').node().clientWidth;
+      var height = d3.select('svg').node().clientHeight;
+      var xScale = d3.scaleLinear().domain([ 0, numPoints ]).range([ 0, width ]);
+      var yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ 0, height ]);
+
+      d3.select( 'svg' )
+        .selectAll( 'circle' )
+        .data( data )
+        .enter()
+        .append( 'circle' )
+          .attr( 'r', 5 )
+          .attr( 'cx', function( d, i ) { return xScale( i ); } )
+          .attr( 'cy', function( d ) { return yScale( d ); } )
+          .attr( 'fill', 'blue' )
+          .attr( 'stroke', 'none' );
+
+    </script>
+  </body>
+</html>
