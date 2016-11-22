@@ -21,27 +21,54 @@
     <script>
       var data = [];
       var numPoints = 100;
-      var tIncrement = 1 / 20;
+      var pointsPerCycle = 20;
       for( var i = 0; i < numPoints; i++ ) {
-        var t = i * Math.PI * tIncrement;
+        var t = i * Math.PI * 2 * 1/pointsPerCycle;
         data.push( Math.sin(t) );
       }
 
       var width = d3.select('svg').node().clientWidth;
       var height = d3.select('svg').node().clientHeight;
       var xScale = d3.scaleLinear().domain([ 0, numPoints ]).range([ 0, width ]);
-      var yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ 0, height ]);
+      var yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ height * 0.1, height * 0.9 ]);
+
+      var lineFunction = d3.line()
+        .x( function( d, i ) { return xScale( i ); } )
+        .y( function( d, i ) { return yScale( d ); } )
+        .curve( d3.curveCardinal );
 
       d3.select( 'svg' )
-        .selectAll( 'circle' )
-        .data( data )
-        .enter()
-        .append( 'circle' )
-          .attr( 'r', 5 )
-          .attr( 'cx', function( d, i ) { return xScale( i ); } )
-          .attr( 'cy', function( d ) { return yScale( d ); } )
-          .attr( 'fill', 'blue' )
-          .attr( 'stroke', 'none' );
+        .append( 'path' )
+        .attr( 'fill', 'none' )
+        .attr( 'stroke', 'blue' )
+        .attr( 'stroke-width', 2 )
+        .attr( 'd', lineFunction( data ) );
+
+      var frequency = 2; // Hz
+      var previousElapsed = 0;
+      var timer = d3.timer( function( elapsed ) {
+        var elapsedSincePrev = elapsed - previousElapsed;
+        var cyclesSincePrev = elapsedSincePrev / 1000 * frequency;
+        var points = pointsPerCycle * cyclesSincePrev;
+        if( points < 1 ) {
+          return;
+        }
+        points = Math.floor( points );
+
+        var cyclesSinceStart = elapsed / 1000 * frequency;
+        var thetaStart = cyclesSinceStart * Math.PI * 2;
+        var thetaEnd = cyclesSinceStart * Math.PI * 2;
+        var thetaScale = d3.scaleLinear().domain([ 0, points ]).range([ thetaStart, thetaEnd ]);
+        var newData = [];
+        for( var i = 0; i < points; i++ ) {
+          newData.push( Math.sin( thetaScale( i ) ) );
+        }
+
+        data = data.slice( points ).concat( newData );
+        d3.select( 'path' ).attr( 'd', lineFunction( data ) );
+
+        previousElapsed = elapsed;
+      }, 500 );
 
     </script>
   </body>
