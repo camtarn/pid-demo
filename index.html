@@ -21,6 +21,11 @@
     <script>
       var processVar = 0;
       var controlVar = 0;
+
+      var friction = 0.02; // 0-1: 0 = no friction, 1 = stops immediately if no force applied
+      var mass = 500; // mass of 1 means a force of n will result in a velocity of n
+      var velocity = 0;
+
       var previousError = 0;
       var integralAccumulator = 0;
       var proportionalGain = 1;
@@ -37,10 +42,17 @@
         var integral = integralAccumulator = integralAccumulator + error
         var derivative = error - previousError;
         controlVar = proportional * proportionalGain + integral * integralGain + derivative * derivativeGain;
+        controlVar = Math.max( -1, Math.min( 1, controlVar ) );
         previousError = error;
       };
       var plantFunction = function() {
-        processVar = processVar + controlVar;
+        velocity *= 1 - friction;
+        velocity = velocity + controlVar / mass;
+        processVar += velocity;
+        if( processVar >= 1 || processVar <= -1 ) {
+          processVar = Math.max( -1, Math.min( 1, processVar ) );
+          velocity = 0;
+        }
       };
 
       var data = [];
@@ -52,7 +64,7 @@
 
       var width = d3.select('svg').node().clientWidth;
       var height = d3.select('svg').node().clientHeight;
-      var xScale = d3.scaleLinear().domain([ 0, numPoints ]).range([ 0, width ]);
+      var xScale = d3.scaleLinear().domain([ 0, numPoints ]).range([ 0, width - 10 ]);
       var yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ height * 0.1, height * 0.9 ]);
 
       var lineFunction = d3.line()
@@ -66,6 +78,13 @@
         .attr( 'stroke', 'blue' )
         .attr( 'stroke-width', 2 )
         .attr( 'd', lineFunction( data ) );
+
+      d3.select( 'svg' )
+        .append( 'circle' )
+        .attr( 'fill', 'blue' )
+        .attr( 'stroke', 'none' )
+        .attr( 'r', 10 )
+        .attr( 'cx', width - 10 );
 
       var frequency = 0.5; // Hz
       var previousElapsed = 0;
@@ -86,6 +105,7 @@
 
         data = data.slice( points ).concat( newData );
         d3.select( 'path' ).attr( 'd', lineFunction( data ) );
+        d3.select( 'circle' ).attr( 'cy', yScale( processVar ) );
 
         previousElapsed = elapsed;
       } );
