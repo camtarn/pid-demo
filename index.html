@@ -19,9 +19,12 @@
     </svg>
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script>
+      var padding = 10; // percentage of height not to draw into, at top and bottom
+
       var processVar = 0;
       var controlVar = 0;
 
+      var gravity = 0; /* 0.001; */ // constant acceleration added to velocity every frame
       var friction = 0.02; // 0-1: 0 = no friction, 1 = stops immediately if no force applied
       var mass = 500; // mass of 1 means a force of n will result in a velocity of n
       var velocity = 0;
@@ -47,7 +50,7 @@
       };
       var plantFunction = function() {
         velocity *= 1 - friction;
-        velocity = velocity + controlVar / mass;
+        velocity = velocity + gravity + controlVar / mass;
         processVar += velocity;
         if( processVar >= 1 || processVar <= -1 ) {
           processVar = Math.max( -1, Math.min( 1, processVar ) );
@@ -65,7 +68,7 @@
       var width = d3.select('svg').node().clientWidth;
       var height = d3.select('svg').node().clientHeight;
       var xScale = d3.scaleLinear().domain([ 0, numPoints ]).range([ 0, width - 10 ]);
-      var yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ height * 0.1, height * 0.9 ]);
+      var yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ height * padding / 100, height * ( 1 - padding / 100 ) ]);
 
       var lineFunction = d3.line()
         .x( function( d, i ) { return xScale( i ); } )
@@ -74,17 +77,36 @@
 
       d3.select( 'svg' )
         .append( 'path' )
-        .attr( 'fill', 'none' )
-        .attr( 'stroke', 'blue' )
-        .attr( 'stroke-width', 2 )
-        .attr( 'd', lineFunction( data ) );
+          .attr( 'fill', 'none' )
+          .attr( 'stroke', 'blue' )
+          .attr( 'stroke-width', 2 )
+          .attr( 'd', lineFunction( data ) );
 
       d3.select( 'svg' )
         .append( 'circle' )
-        .attr( 'fill', 'blue' )
-        .attr( 'stroke', 'none' )
-        .attr( 'r', 10 )
-        .attr( 'cx', width - 10 );
+          .attr( 'fill', 'blue' )
+          .attr( 'stroke', 'none' )
+          .attr( 'r', 10 )
+          .attr( 'cx', width - 10 );
+
+      var setpointSliderDrag = d3.drag()
+        .on( 'drag', function(d) {
+          var value = yScale.invert( d3.event.y );
+          setpoint = Math.min( 1, Math.max( -1, value ) );
+          d3.select( '.setpoint' )
+            .attr( 'y', yScale( setpoint ) - 5 );
+        } );
+
+      d3.select( 'svg' )
+        .append( 'rect' )
+          .classed( 'setpoint', true )
+          .attr( 'fill', '#0f0' )
+          .attr( 'stroke', 'none' )
+          .attr( 'x', width - 100 )
+          .attr( 'y', yScale( 0 ) - 5 )
+          .attr( 'width', 100 )
+          .attr( 'height', 10 )
+          .call( setpointSliderDrag );
 
       var frequency = 0.5; // Hz
       var previousElapsed = 0;
