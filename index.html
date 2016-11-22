@@ -19,12 +19,35 @@
     </svg>
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script>
+      var processVar = 0;
+      var controlVar = 0;
+      var previousError = 0;
+      var integralAccumulator = 0;
+      var proportionalGain = 1;
+      var integralGain = 0;
+      var derivativeGain = 0;
+      var setpoint = 0;
+
+      // Both of these only run for a single time step (they're run repeatedly
+      // to produce multiple steps of data), so no need to take account of time
+      // delta
+      var controlFunction = function() {
+        var error = setpoint - processVar;
+        var proportional = error * proportionalGain;
+        var integral = integralAccumulator = integralAccumulator + error
+        var derivative = error - previousError;
+        controlVar = proportional * proportionalGain + integral * integralGain + derivative * derivativeGain;
+        previousError = error;
+      };
+      var plantFunction = function() {
+        processVar = processVar + controlVar;
+      };
+
       var data = [];
-      var numPoints = 100;
-      var pointsPerCycle = 20;
+      var numPoints = 1000;
+      var pointsPerSecond = 100;
       for( var i = 0; i < numPoints; i++ ) {
-        var t = i * Math.PI * 2 * 1/pointsPerCycle;
-        data.push( Math.sin(t) );
+        data.push(0);
       }
 
       var width = d3.select('svg').node().clientWidth;
@@ -44,31 +67,28 @@
         .attr( 'stroke-width', 2 )
         .attr( 'd', lineFunction( data ) );
 
-      var frequency = 2; // Hz
+      var frequency = 0.5; // Hz
       var previousElapsed = 0;
       var timer = d3.timer( function( elapsed ) {
         var elapsedSincePrev = elapsed - previousElapsed;
-        var cyclesSincePrev = elapsedSincePrev / 1000 * frequency;
-        var points = pointsPerCycle * cyclesSincePrev;
+        var points = pointsPerSecond * elapsedSincePrev / 1000;
         if( points < 1 ) {
           return;
         }
         points = Math.floor( points );
 
-        var cyclesSinceStart = elapsed / 1000 * frequency;
-        var thetaStart = cyclesSinceStart * Math.PI * 2;
-        var thetaEnd = cyclesSinceStart * Math.PI * 2;
-        var thetaScale = d3.scaleLinear().domain([ 0, points ]).range([ thetaStart, thetaEnd ]);
         var newData = [];
         for( var i = 0; i < points; i++ ) {
-          newData.push( Math.sin( thetaScale( i ) ) );
+          controlFunction();
+          plantFunction();
+          newData.push( processVar );
         }
 
         data = data.slice( points ).concat( newData );
         d3.select( 'path' ).attr( 'd', lineFunction( data ) );
 
         previousElapsed = elapsed;
-      }, 500 );
+      } );
 
     </script>
   </body>
