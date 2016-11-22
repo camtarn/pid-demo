@@ -11,6 +11,23 @@
 
       body {
         height: 100%;
+        background: #334;
+      }
+
+      svg {
+        filter: drop-shadow( -3px 3px 1px #445 );
+      }
+
+      path {
+        stroke: #aaf;
+      }
+
+      circle {
+        fill: #77f;
+      }
+
+      .setpoint {
+        fill: #4f4;
       }
     </style>
   </head>
@@ -78,13 +95,11 @@
       d3.select( 'svg' )
         .append( 'path' )
           .attr( 'fill', 'none' )
-          .attr( 'stroke', 'blue' )
           .attr( 'stroke-width', 2 )
           .attr( 'd', lineFunction( data ) );
 
       d3.select( 'svg' )
         .append( 'circle' )
-          .attr( 'fill', 'blue' )
           .attr( 'stroke', 'none' )
           .attr( 'r', 10 )
           .attr( 'cx', width - 10 );
@@ -100,7 +115,6 @@
       d3.select( 'svg' )
         .append( 'rect' )
           .classed( 'setpoint', true )
-          .attr( 'fill', '#0f0' )
           .attr( 'stroke', 'none' )
           .attr( 'x', width - 100 )
           .attr( 'y', yScale( 0 ) - 5 )
