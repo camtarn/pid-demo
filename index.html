@@ -59,6 +59,10 @@
         font-size: 80%;
       }
 
+      .helpText {
+        font-size: 80%;
+      }
+
       .hidden {
         display: none;
       }
@@ -135,19 +139,28 @@
           valueText.text( value.toFixed(2) );
         }
 
+        function setValue( value ) {
+          parameters[parameterName] = Math.max( range[0], Math.min( range[1], value ) );
+          integralAccumulator = 0;
+          updateControl();
+        }
+
         var dragBehaviour = d3.drag()
           .on( 'drag', function(d) {
             var value = mouseScale( d3.event.dy );
-            console.log( value );
-            parameters[parameterName] = Math.max( range[0], Math.min( range[1], parameters[parameterName] + value ) );
-            updateControl();
+            setValue( parameters[parameterName] + value );
           } );
 
         control = parent
           .append( 'g' )
             .classed( 'control', true )
             .attr( 'transform', 'translate( ' + ( cx - controlRadius ) + ', ' + ( cy - controlRadius ) + ' )' )
-            .call( dragBehaviour );
+            .call( dragBehaviour )
+            .on( 'click', function() {
+              if( d3.event.ctrlKey ) {
+                setValue( ( range[0] + range[1] ) / 2 );
+              }
+            } );
         control
           .append( 'circle' )
             .classed( 'controlDial', true )
@@ -234,6 +247,7 @@
           .on( 'drag', function(d) {
             var value = yScale.invert( d3.event.y );
             parameters.setpoint = Math.min( 1, Math.max( -1, value ) );
+            integralAccumulator = 0;
             d3.select( '.setpoint' )
               .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( parameters.setpoint ) - setpointHeight/2 ) + ')' );
           } );
@@ -257,6 +271,14 @@
             .classed( 'controlContainerRect', true )
             .attr( 'width', 300 )
             .attr( 'height', 500 );
+        controls
+          .append( 'text' )
+            .classed( 'helpText', true )
+            .text( 'ctrl-click knobs to reset' )
+            .attr( 'x', 150 )
+            .attr( 'y', 490 )
+            .attr( 'text-anchor', 'middle' )
+            .attr( 'alignment-baseline', 'bottom' );
         createControl( controls, 80, 40, 'proportional gain', 'proportionalGain', [ -1, 1 ] );
         createControl( controls, 220, 40, 'integral gain', 'integralGain', [ -1, 1 ] );
         createControl( controls, 150, 160, 'derivative gain', 'derivativeGain', [ -1, 1 ] );
