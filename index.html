@@ -57,10 +57,15 @@
       var derivativeGain = 0;
       var setpoint = 0;
 
+      var data = [];
+      var previousElapsed;
+
+      var width, height, xScale, yScale, lineFunction;
+
       // Both of these only run for a single time step (they're run repeatedly
       // to produce multiple steps of data), so no need to take account of time
       // delta
-      var controlFunction = function() {
+      function controlFunction() {
         var error = setpoint - processVar;
         var proportional = error * proportionalGain;
         var integral = integralAccumulator = integralAccumulator + error
@@ -68,8 +73,9 @@
         controlVar = proportional * proportionalGain + integral * integralGain + derivative * derivativeGain;
         controlVar = Math.max( -1, Math.min( 1, controlVar ) );
         previousError = error;
-      };
-      var plantFunction = function() {
+      }
+
+      function plantFunction() {
         velocity *= 1 - friction;
         velocity = velocity + gravity + controlVar / mass;
         processVar += velocity;
@@ -77,58 +83,9 @@
           processVar = Math.max( -1, Math.min( 1, processVar ) );
           velocity = 0;
         }
-      };
-
-      var data = [];
-      for( var i = 0; i < numPoints; i++ ) {
-        data.push(0);
       }
 
-      var width = d3.select('svg').node().clientWidth;
-      var height = d3.select('svg').node().clientHeight;
-      var xScale = d3.scaleLinear().domain([ 0, numPoints ]).range([ 0, width - 10 ]);
-      var yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ height * padding / 100, height * ( 1 - padding / 100 ) ]);
-
-      var lineFunction = d3.line()
-        .x( function( d, i ) { return xScale( i ); } )
-        .y( function( d, i ) { return yScale( d ); } )
-        .curve( d3.curveCardinal );
-
-      d3.select( 'svg' )
-        .append( 'path' )
-          .classed( 'history', true )
-          .attr( 'fill', 'none' )
-          .attr( 'stroke-width', 2 )
-          .attr( 'd', lineFunction( data ) );
-
-      d3.select( 'svg' )
-        .append( 'circle' )
-          .classed( 'processVal', true )
-          .attr( 'stroke', 'none' )
-          .attr( 'r', 10 )
-          .attr( 'cx', width - 10 );
-
-      var setpointSliderDrag = d3.drag()
-        .on( 'drag', function(d) {
-          var value = yScale.invert( d3.event.y );
-          setpoint = Math.min( 1, Math.max( -1, value ) );
-          d3.select( '.setpoint' )
-            .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( setpoint ) - setpointHeight/2 ) + ')' )
-        } );
-
-      d3.select( 'svg' )
-        .append( 'path' )
-          .classed( 'setpoint', true )
-          .attr( 'd', 'M 0 0 L 60 0 L 100 50 L 60 100 L 0 100 Z' )
-          .attr( 'strokeWidth', 2 )
-          .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( 0 ) - setpointHeight/2 ) + ')' )
-          .attr( 'width', 100 )
-          .attr( 'height', setpointHeight )
-          .call( setpointSliderDrag );
-
-      var frequency = 0.5; // Hz
-      var previousElapsed = 0;
-      var timer = d3.timer( function( elapsed ) {
+      function update( elapsed ) {
         var elapsedSincePrev = elapsed - previousElapsed;
         var points = pointsPerSecond * elapsedSincePrev / 1000;
         if( points < 1 ) {
@@ -148,7 +105,58 @@
         d3.select( '.processVal' ).attr( 'cy', yScale( processVar ) );
 
         previousElapsed = elapsed;
-      } );
+      }
+
+      function setup() {
+        for( var i = 0; i < numPoints; i++ ) {
+          data.push(0);
+        }
+
+        width = d3.select('svg').node().clientWidth;
+        height = d3.select('svg').node().clientHeight;
+        xScale = d3.scaleLinear().domain([ 0, numPoints ]).range([ 0, width - 10 ]);
+        yScale = d3.scaleLinear().domain([ -1, 1 ]).range([ height * padding / 100, height * ( 1 - padding / 100 ) ]);
+        lineFunction = d3.line()
+          .x( function( d, i ) { return xScale( i ); } )
+          .y( function( d, i ) { return yScale( d ); } )
+          .curve( d3.curveCardinal );
+
+        d3.select( 'svg' )
+          .append( 'path' )
+            .classed( 'history', true )
+            .attr( 'fill', 'none' )
+            .attr( 'stroke-width', 2 )
+            .attr( 'd', lineFunction( data ) );
+
+        d3.select( 'svg' )
+          .append( 'circle' )
+            .classed( 'processVal', true )
+            .attr( 'stroke', 'none' )
+            .attr( 'r', 10 )
+            .attr( 'cx', width - 10 );
+
+        var setpointSliderDrag = d3.drag()
+          .on( 'drag', function(d) {
+            var value = yScale.invert( d3.event.y );
+            setpoint = Math.min( 1, Math.max( -1, value ) );
+            d3.select( '.setpoint' )
+              .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( setpoint ) - setpointHeight/2 ) + ')' )
+          } );
+
+        d3.select( 'svg' )
+          .append( 'path' )
+            .classed( 'setpoint', true )
+            .attr( 'd', 'M 0 0 L 60 0 L 100 50 L 60 100 L 0 100 Z' )
+            .attr( 'strokeWidth', 2 )
+            .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( 0 ) - setpointHeight/2 ) + ')' )
+            .attr( 'width', 100 )
+            .attr( 'height', setpointHeight )
+            .call( setpointSliderDrag );
+
+        d3.timer( update );
+      }
+
+      setup();
 
     </script>
   </body>
