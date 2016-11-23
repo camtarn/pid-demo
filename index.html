@@ -18,11 +18,11 @@
         filter: drop-shadow( -3px 3px 1px #445 );
       }
 
-      path {
+      .history {
         stroke: #aaf;
       }
 
-      circle {
+      .processVal {
         fill: #77f;
       }
 
@@ -96,12 +96,14 @@
 
       d3.select( 'svg' )
         .append( 'path' )
+          .classed( 'history', true )
           .attr( 'fill', 'none' )
           .attr( 'stroke-width', 2 )
           .attr( 'd', lineFunction( data ) );
 
       d3.select( 'svg' )
         .append( 'circle' )
+          .classed( 'processVal', true )
           .attr( 'stroke', 'none' )
           .attr( 'r', 10 )
           .attr( 'cx', width - 10 );
@@ -111,15 +113,15 @@
           var value = yScale.invert( d3.event.y );
           setpoint = Math.min( 1, Math.max( -1, value ) );
           d3.select( '.setpoint' )
-            .attr( 'y', yScale( setpoint ) - setpointHeight/2 );
+            .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( setpoint ) - setpointHeight/2 ) + ')' )
         } );
 
       d3.select( 'svg' )
-        .append( 'rect' )
+        .append( 'path' )
           .classed( 'setpoint', true )
+          .attr( 'd', 'M 0 0 L 60 0 L 100 50 L 60 100 L 0 100 Z' )
           .attr( 'strokeWidth', 2 )
-          .attr( 'x', width - 100 )
-          .attr( 'y', yScale( 0 ) - setpointHeight/2 )
+          .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( 0 ) - setpointHeight/2 ) + ')' )
           .attr( 'width', 100 )
           .attr( 'height', setpointHeight )
           .call( setpointSliderDrag );
@@ -142,8 +144,8 @@
         }
 
         data = data.slice( points ).concat( newData );
-        d3.select( 'path' ).attr( 'd', lineFunction( data ) );
-        d3.select( 'circle' ).attr( 'cy', yScale( processVar ) );
+        d3.select( '.history' ).attr( 'd', lineFunction( data ) );
+        d3.select( '.processVal' ).attr( 'cy', yScale( processVar ) );
 
         previousElapsed = elapsed;
       } );
