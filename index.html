@@ -18,6 +18,12 @@
         filter: drop-shadow( -3px 3px 1px #445 );
       }
 
+      text {
+        fill: white;
+        font-family: sans-serif;
+        user-select: none;
+      }
+
       .history {
         stroke: #aaf;
       }
@@ -29,6 +35,30 @@
       .setpoint {
         stroke: #4f4;
         fill: rgba( 128, 256, 128, 0.2 );
+      }
+
+      .controlButtonRect {
+        stroke: #77f;
+        fill: rgba( 128, 128, 256, 0.2 );
+      }
+
+      .controlContainerRect {
+        stroke: #77f;
+        fill: rgba( 128, 128, 256, 0.2 );
+      }
+
+      .controlDial, .controlNotch {
+        stroke: #99f;
+        stroke-width: 5px;
+        fill: rgba( 128, 128, 256, 0.2 );
+      }
+
+      .valueText {
+        font-size: 80%;
+      }
+
+      .hidden {
+        display: none;
       }
     </style>
   </head>
@@ -45,17 +75,19 @@
       var processVar = 0;
       var controlVar = 0;
 
-      var gravity = 0; /* 0.001; */ // constant acceleration added to velocity every frame
-      var friction = 0.02; // 0-1: 0 = no friction, 1 = stops immediately if no force applied
-      var mass = 500; // mass of 1 means a force of n will result in a velocity of n
-      var velocity = 0;
+      var parameters = {
+        gravity: 0, // constant acceleration added to velocity every frame (note: divided by 1000 to make scaling make sense!)
+        friction: 0.02, // 0-1: 0: no friction, 1: stops immediately if no force applied
+        mass: 500, // mass of 1 means a force of n will result in a velocity of n
+        proportionalGain: 1,
+        integralGain: 0,
+        derivativeGain: 0,
+        setpoint: 0
+      }
 
+      var velocity = 0;
       var previousError = 0;
       var integralAccumulator = 0;
-      var proportionalGain = 1;
-      var integralGain = 0;
-      var derivativeGain = 0;
-      var setpoint = 0;
 
       var data = [];
       var previousElapsed;
@@ -66,23 +98,84 @@
       // to produce multiple steps of data), so no need to take account of time
       // delta
       function controlFunction() {
-        var error = setpoint - processVar;
-        var proportional = error * proportionalGain;
+        var error = parameters.setpoint - processVar;
+        var proportional = error * parameters.proportionalGain;
         var integral = integralAccumulator = integralAccumulator + error
         var derivative = error - previousError;
-        controlVar = proportional * proportionalGain + integral * integralGain + derivative * derivativeGain;
+        controlVar = proportional * parameters.proportionalGain + integral * parameters.integralGain + derivative * parameters.derivativeGain;
         controlVar = Math.max( -1, Math.min( 1, controlVar ) );
         previousError = error;
       }
 
       function plantFunction() {
-        velocity *= 1 - friction;
-        velocity = velocity + gravity + controlVar / mass;
+        velocity *= 1 - parameters.friction;
+        velocity = velocity + parameters.gravity/1000 + controlVar / parameters.mass;
         processVar += velocity;
         if( processVar >= 1 || processVar <= -1 ) {
           processVar = Math.max( -1, Math.min( 1, processVar ) );
           velocity = 0;
         }
+      }
+
+      var controlRadius = 20;
+      function createControl( parent, cx, cy, label, parameterName, range ) {
+        var control, notch, valueText;
+
+        var maxRange = Math.max( Math.abs( range[0] ), Math.abs( range[1] ) );
+
+        // Dragging up (negative y) should make the value go up
+        var mouseScale = d3.scaleLinear().domain( [ 100, -100 ] ).range( [ -maxRange, maxRange ] ).clamp(true);
+        var rotateScale = d3.scaleLinear().domain( range ).range( [ -170, 170 ] ).clamp(true);
+
+        function updateControl() {
+          var value = parameters[parameterName];
+          notch.attr( 'transform', 'rotate( ' + rotateScale( value ) + ', ' + controlRadius + ', ' + controlRadius + ' )' );
+          valueText.text( value.toFixed(2) );
+        }
+
+        var dragBehaviour = d3.drag()
+          .on( 'drag', function(d) {
+            var value = mouseScale( d3.event.dy );
+            console.log( value );
+            parameters[parameterName] = Math.max( range[0], Math.min( range[1], parameters[parameterName] + value ) );
+            updateControl();
+          } );
+
+        control = parent
+          .append( 'g' )
+            .classed( 'control', true )
+            .attr( 'transform', 'translate( ' + ( cx - controlRadius ) + ', ' + ( cy - controlRadius ) + ' )' )
+            .call( dragBehaviour );
+        control
+          .append( 'circle' )
+            .classed( 'controlDial', true )
+            .attr( 'r', controlRadius )
+            .attr( 'cx', controlRadius )
+            .attr( 'cy', controlRadius );
+        notch = control
+          .append( 'line' )
+            .classed( 'controlNotch', true )
+            .attr( 'x1', controlRadius )
+            .attr( 'y1', 0 )
+            .attr( 'x2', controlRadius )
+            .attr( 'y2', controlRadius / 2 );
+        valueText = control
+          .append( 'text' )
+            .classed( 'valueText', true )
+            .attr( 'x', controlRadius )
+            .attr( 'y', controlRadius * 2 + 15 )
+            .attr( 'text-anchor', 'middle' )
+            .attr( 'alignment-baseline', 'central' );
+        control
+          .append( 'text' )
+            .classed( 'labelText', true )
+            .text( label )
+            .attr( 'x', controlRadius )
+            .attr( 'y', controlRadius * 2 + 35 )
+            .attr( 'text-anchor', 'middle' )
+            .attr( 'alignment-baseline', 'central' );
+        updateControl();
+
       }
 
       function update( elapsed ) {
@@ -138,9 +231,9 @@
         var setpointSliderDrag = d3.drag()
           .on( 'drag', function(d) {
             var value = yScale.invert( d3.event.y );
-            setpoint = Math.min( 1, Math.max( -1, value ) );
+            parameters.setpoint = Math.min( 1, Math.max( -1, value ) );
             d3.select( '.setpoint' )
-              .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( setpoint ) - setpointHeight/2 ) + ')' )
+              .attr( 'transform', 'translate( ' + ( width - ( setpointHeight + 10 ) ) + ', ' + ( yScale( parameters.setpoint ) - setpointHeight/2 ) + ')' );
           } );
 
         d3.select( 'svg' )
@@ -152,6 +245,44 @@
             .attr( 'width', 100 )
             .attr( 'height', setpointHeight )
             .call( setpointSliderDrag );
+
+        var controls = d3.select( 'svg' )
+          .append( 'g' )
+            .classed( 'controlContainer hidden', true )
+            .attr( 'transform', 'translate( 10, 55 )' );
+        controls
+          .append( 'rect' )
+            .classed( 'controlContainerRect', true )
+            .attr( 'width', 300 )
+            .attr( 'height', 500 );
+        createControl( controls, 80, 40, 'proportional gain', 'proportionalGain', [ -1, 1 ] );
+        createControl( controls, 220, 40, 'integral gain', 'integralGain', [ -1, 1 ] );
+        createControl( controls, 150, 160, 'derivative gain', 'derivativeGain', [ -1, 1 ] );
+        createControl( controls, 150, 280, 'mass', 'mass', [ 1, 2000 ] );
+        createControl( controls, 80, 400, 'friction', 'friction', [ 0, 0.1 ] );
+        createControl( controls, 220, 400, 'gravity', 'gravity', [ 0, 10 ] );
+
+        var controlButton = d3.select( 'svg' )
+          .append( 'g' );
+        controlButton
+          .append( 'rect' )
+            .classed( 'controlButtonRect', true )
+            .attr( 'x', 10 )
+            .attr( 'y', 10 )
+            .attr( 'width', 100 )
+            .attr( 'height', 40 );
+        controlButton
+          .append( 'text' )
+            .text( 'controls' )
+            .attr( 'text-anchor', 'middle' )
+            .attr( 'alignment-baseline', 'central' )
+            .attr( 'x', 60 )
+            .attr( 'y', 30 );
+        controlButton
+          .on( 'click', function() {
+            var container = d3.select( '.controlContainer' );
+            container.classed( 'hidden', !container.classed( 'hidden' ) );
+          } );
 
         d3.timer( update );
       }
